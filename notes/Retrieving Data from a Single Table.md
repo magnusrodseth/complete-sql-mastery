@@ -52,7 +52,7 @@ FROM customers
 -- ORDER BY first_name;
 ```
 
-## The `SELECT` clause
+## The `SELECT` Clause
 
 ### Arithmetic operations
 
@@ -90,4 +90,100 @@ We can remove duplicates using the `DISTINCT` keyword.
 ```sql
 SELECT DISTINCT state
 FROM customers;
+```
+
+## The `WHERE` Clause
+
+### Used as a conditional
+
+The `WHERE` statement is used as a conditional when iterating over records.
+
+```sql
+SELECT *
+FROM customers
+WHERE points > 3000;
+
+SELECT *
+FROM customers
+WHERE state = 'VA';
+```
+
+All ordinary comparison operator are included.
+
+### Filter on dates
+
+We can use the **standard notation for dates** when filtering for dates.
+
+```sql
+SELECT *
+FROM customers
+WHERE birth_date > '1990-01-01';
+```
+
+## The `AND`, `OR` and `NOT` operators
+
+We can combine multiple search conditions when filtering data.
+
+```sql
+-- Both conditions must be true
+SELECT *
+FROM customers
+WHERE birth_date > '1990-01-01'
+  AND points > 1000;
+
+-- One condition must be true
+SELECT *
+FROM customers
+WHERE birth_date > '1990-01-01'
+  OR points > 1000;
+
+-- Conditionals can be chained together
+SELECT *
+FROM customers
+WHERE birth_date > '1990-01-01'
+   OR (points > 1000 AND state = 'VA');
+```
+
+Note that `AND` has a higher precedence than `OR` by default.
+We can override this precedence using parenthesis `()`.
+
+```sql
+-- Conditionals can be negated
+SELECT *
+FROM customers
+WHERE (NOT birth_date > '1990-01-01')
+   OR (points > 1000 AND state = 'VA');
+```
+
+## The `IN` operator
+
+Let's say we want to query all customers in Virginia or Florida or Georgia.
+We **can** write the query like this:
+
+```sql
+SELECT *
+FROM customers
+WHERE state = 'VA'
+   OR state = 'FL'
+   OR state = 'GA';
+```
+
+However, there is a more efficient way to query this data.
+
+```sql
+SELECT *
+FROM customers
+WHERE state IN ('VA', 'FL', 'GA');
+```
+
+We can also negate this conditional.
+
+```sql
+SELECT *
+FROM customers
+WHERE state NOT IN ('VA', 'FL', 'GA');
+
+SELECT *
+FROM products
+WHERE quantity_in_stock IN (49, 38, 72)
 ```
