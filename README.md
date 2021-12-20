@@ -406,4 +406,268 @@ ORDER BY points DESC
 LIMIT 3
 ```
 
-TODO: Fill in information here.
+## Retrieving data from multiple tables
+
+### The `INNER JOIN` statement
+
+We can join multiple tables together using the `JOIN` keyword.
+For now, we only use `INNER JOIN`, but throughout the course, other type of `JOIN`'s
+will be used.
+
+```sql
+-- Join the orders and customers table where customer_id in orders equals
+-- customer_id in customers.
+-- Note that we can give customers an alias 'c'.
+SELECT order_id, first_name, last_name
+FROM orders
+         INNER JOIN customers c ON orders.customer_id = c.customer_id
+```
+
+In situations where we have **the same column in multiple tables**,
+we need to specify the column.
+
+```sql
+-- Here, we specify c.customer_id in order to prevent it being ambiguous
+SELECT order_id, c.customer_id, first_name, last_name
+FROM orders
+         INNER JOIN customers c ON orders.customer_id = c.customer_id
+```
+
+These table names are getting quite long.
+We can abbreviate them using the first letter like so:
+
+```sql
+-- Note that if both tables have the same first letter,
+-- we simply use common sense to abbreviate them.
+SELECT order_id, c.customer_id, first_name, last_name
+FROM orders o
+         INNER JOIN customers c ON o.customer_id = c.customer_id
+```
+
+### Joining across databases
+
+In the real world, we often need to work with several databases.
+
+In the example below, `sql_inventory.products` is a table from a different database
+than the database `order_items` resides in.
+
+```sql
+SELECT *
+FROM order_items oi
+         INNER JOIN sql_inventory.products p ON oi.product_id = p.product_id
+```
+
+Note that the prefix before the table name depends on which database we `USE`.
+
+```sql
+-- Note that we explicitly use 'sql_inventory' database.
+-- This changes how the syntax of getting 'order_items' in 'sql_store'.
+USE sql_inventory;
+
+SELECT *
+FROM sql_store.order_items oi
+         INNER JOIN products p ON p.product_id = oi.product_id
+```
+
+### Self joins
+
+In SQL, we can join a table with itself.
+
+As an example, we have employees with a given `employee_id`.
+An employee also reports to a given employee in the `reports_to` column,
+using an `employee_id`. In this case, we can **self join** the table to query desired
+data.
+
+```sql
+-- m is shorthand for 'manager'
+SELECT e.first_name,
+       e.last_name,
+       m.first_name AS manager_first_name,
+       m.last_name  AS manager_last_name
+FROM employees e
+         INNER JOIN employees m ON e.reports_to = m.employee_id
+```
+
+### Joining multiple tables
+
+We can join **more than 2 tables** when writing a query.
+
+As an example, we want to create a report for the status on our customers' orders.
+
+```sql
+SELECT order_id,
+       order_date,
+       first_name,
+       last_name,
+       os.name AS status
+FROM orders o
+         INNER JOIN customers c on o.customer_id = c.customer_id
+         INNER JOIN order_statuses os on o.status = os.order_status_id
+```
+
+We just joined 3 tables! In the real word, you may need to join 10+ tables.
+
+Another example: We want to create a report for payments executed by client,
+with their payment method.
+
+```sql
+SELECT p.date,
+       p.invoice_id,
+       p.amount,
+       c.name  AS client_name,
+       pm.name AS payment_method
+FROM payments p
+         INNER JOIN clients c on p.client_id = c.client_id
+         INNER JOIN payment_methods pm on p.payment_method = pm.payment_method_id
+```
+
+### Compound join conditions
+
+A table may have a **composite primary key**.
+A composite primary key contains more than one column.
+
+![Composite Primary Key 1](./img/composite-primary-key/1.png)
+![Composite Primary Key 2](./img/composite-primary-key/2.png)
+
+If a table has a composite primary key, we need to be aware when we're
+joining this table with other tables.
+
+```sql
+SELECT *
+FROM order_items oi
+         JOIN order_item_notes oin
+              ON oi.order_id = oin.order_Id
+                  AND oi.product_id = oin.product_id
+```
+
+### Implicit `JOIN` syntax
+
+We have the following basic `JOIN` query:
+
+```sql
+SELECT *
+FROM orders o
+         JOIN customers c on o.customer_id = c.customer_id
+```
+
+We can rewrite the `JOIN` using the following syntax:
+
+```sql
+-- Implicit JOIN syntax
+SELECT *
+FROM orders o,
+     customers c
+WHERE c.customer_id = o.customer_id
+```
+
+This is called **implicit join syntax**.
+
+Even though MySQL supports this syntax, it is generally not recommended to use it.
+This is because if we forget the `WHERE` clause, we get a **cross join**.
+
+Cross joins will be touched on later in the course.
+
+**To summarize: Be aware of implicit join syntax, but use explicit join syntax!**
+
+### Outer joins
+
+Whenever we type `JOIN`, we are really using `INNER JOIN`.
+
+This part of the course focuses on `OUTER JOIN`.
+
+Let's say we want to see all customers, whether they have an order placed or not.
+
+```sql
+-- Note that this does not solve the problem above
+SELECT c.customer_id, c.first_name, o.order_id
+FROM customers c
+         JOIN orders o on c.customer_id = o.customer_id
+ORDER BY c.customer_id
+```
+
+This query does not show all customers whether they have placed an order or not.
+This is because some customers do not have an order,
+and thus `c.customer_id = o.customer_id` is not true!
+
+We can use an **outer join** to solve this problem!
+
+We have two types of outer joins: `LEFT JOIN` and `RIGHT JOIN`.
+
+#### `LEFT JOIN`
+
+```sql
+SELECT c.customer_id, c.first_name, o.order_id
+FROM customers c
+         LEFT JOIN orders o on c.customer_id = o.customer_id
+ORDER BY c.customer_id
+```
+
+Using `LEFT JOIN`, all records from the left table are returned whether the condition
+is true or not.
+
+In our example, the left table is `customers c`
+and the condition is `orders o on c.customer_id = o.customer_id`.
+
+#### `RIGHT JOIN`
+
+```sql
+SELECT c.customer_id, c.first_name, o.order_id
+FROM customers c
+         RIGHT JOIN orders o on c.customer_id = o.customer_id
+ORDER BY c.customer_id
+```
+
+Using `RIGHT JOIN`, all records from the right table are returned whether
+the condition is true or not.
+
+In our example, the right table is `orders o` and the condition
+is `orders o on c.customer_id = o.customer_id`.
+
+If we want to use a right join, and still see all customer, the order of
+`customers c` and `orders o` must be swapped.
+
+**Note that `RIGHT JOIN` = `RIGHT OUTER JOIN`. The same goes for `LEFT JOIN`.**
+We generally don't use this syntax, in order to make our queries cleaner.
+
+### Outer join between multiple tables
+
+Let's say we want to display all customers, regardless of whether they have
+placed an order **and** regardless of whether the order has a related shipper.
+
+```sql
+SELECT c.customer_id,
+       c.first_name,
+       o.order_id,
+       s.name
+FROM customers c
+         LEFT JOIN orders o ON c.customer_id = o.order_id
+         LEFT JOIN shippers s on o.shipper_id = s.shipper_id
+ORDER BY c.customer_id
+```
+
+As a rule of thumb, avoid using `RIGHT JOIN` when writing complex queries.
+It is just a headache to keep track of which table is joined with which first.
+**Thus, you can achieve every join using either `JOIN` or `LEFT JOIN`!**
+
+### An exercise testing inner join, outer join and several `ORDER BY`
+
+The task is to simply write the query returning the result displayed in the course:
+
+![Join Exercise](./img/join-exercise/1.png)
+
+```sql
+SELECT o.order_date,
+       o.order_id,
+       c.first_name,
+       s.name  AS shipper,
+       os.name AS status
+FROM customers c
+         JOIN orders o on c.customer_id = o.customer_id
+         JOIN order_statuses os on o.status = os.order_status_id
+         LEFT JOIN shippers s on o.shipper_id = s.shipper_id
+ORDER BY os.order_status_id, o.order_id
+```
+
+Note how we first order by `os.order_status_id` and then by `o.order_id`.
+
+### Self outer joins
