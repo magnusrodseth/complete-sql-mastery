@@ -122,7 +122,7 @@ FROM customers
 WHERE birth_date > '1990-01-01';
 ```
 
-## The `AND`, `OR` and `NOT` operators
+### The `AND`, `OR` and `NOT` operators
 
 We can combine multiple search conditions when filtering data.
 
@@ -157,7 +157,7 @@ WHERE (NOT birth_date > '1990-01-01')
    OR (points > 1000 AND state = 'VA');
 ```
 
-## The `IN` operator
+### The `IN` operator
 
 Let's say we want to query all customers in Virginia or Florida or Georgia.
 We **can** write the query like this:
@@ -190,7 +190,7 @@ FROM products
 WHERE quantity_in_stock IN (49, 38, 72)
 ```
 
-## The `BETWEEN` operator
+### The `BETWEEN` operator
 
 We **can** write a comparison within an interval like this:
 
@@ -216,7 +216,7 @@ WHERE birth_date BETWEEN '1990-01-01' AND '2000-01-01';
 This is exactly equivalent to the ordinary comparison above.
 This values in `BETWEEN` are inclusive.
 
-## The `LIKE` operator
+### The `LIKE` operator
 
 We can retrieve records that match a given string pattern.
 
