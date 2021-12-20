@@ -309,7 +309,7 @@ FROM customers
 WHERE last_name REGEXP 'b[ru]';
 ```
 
-## The `IS NULL` operator
+### The `IS NULL` operator
 
 The `IS NULL` operator can be used when a record is missing an attribute.
 
@@ -326,7 +326,7 @@ FROM customers
 WHERE phone IS NOT NULL;
 ```
 
-## The `ORDER BY` clause
+### The `ORDER BY` clause
 
 We can use `ORDER BY` to sort data.
 
