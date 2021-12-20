@@ -671,3 +671,245 @@ ORDER BY os.order_status_id, o.order_id
 Note how we first order by `os.order_status_id` and then by `o.order_id`.
 
 ### Self outer joins
+
+Earlier, we wrote the following query to display employees and their manager:
+
+```sql
+-- m is shorthand for manager
+SELECT e.employee_id,
+       e.first_name,
+       m.first_name AS manager
+FROM employees e
+         JOIN employees m ON e.reports_to = m.employee_id
+```
+
+However, because the manager itself has no manager, its `reports_to` column is `null`.
+
+We solve this by using a self outer join.
+
+```sql
+-- m is shorthand for manager
+SELECT e.employee_id,
+       e.first_name,
+       m.first_name AS manager
+FROM employees e
+         LEFT JOIN employees m ON e.reports_to = m.employee_id
+```
+
+### The `USING` clause
+
+We have the following query:
+
+```sql
+SELECT o.order_id,
+       c.first_name
+FROM orders o
+         JOIN customers c ON o.customer_id = c.customer_id
+```
+
+If the column name in the `ON` clause is exactly the same (here: `customer_id`),
+we can use the `USING` clause to simplify the syntax:
+
+```sql
+SELECT o.order_id,
+       c.first_name
+FROM orders o
+         JOIN customers c USING (customer_id)
+```
+
+These two queries are equivalent.
+
+We can use the `USING` clause with both inner joins and outer joins:
+
+```sql
+SELECT o.order_id,
+       c.first_name,
+       s.name
+FROM orders o
+         JOIN customers c USING (customer_id)
+         LEFT JOIN shippers s USING (shipper_id)
+```
+
+**What if a table uses a composite primary key?**
+
+We once again look at the `order_item_notes` that uses a composite primary key.
+We can query like this:
+
+```sql
+SELECT *
+FROM order_items oi
+         JOIN order_item_notes oin
+              ON oi.order_id = oin.order_Id
+                  AND oi.product_id = oin.product_id
+```
+
+However, this is quite unreadable. We can simplify using the `USING` clause:
+
+```sql
+SELECT *
+FROM order_items oi
+         JOIN order_item_notes oin
+              USING (order_id, product_id)
+```
+
+These two queries are equivalent.
+
+### An exercise using the `USING` clause
+
+The task is to simply write the query returning the result displayed in the course:
+
+![`Using` Exercise](./img/using-exercise/1.png)
+
+```sql
+SELECT p.date,
+       c.name  AS client,
+       p.amount,
+       pm.name AS payment_method
+FROM payments p
+         JOIN clients c USING (client_id)
+         JOIN payment_methods pm on p.payment_method = pm.payment_method_id
+```
+
+Note how we cannot use `USING` on the `payment_methods` table due to the column name
+not be exactly the same.
+
+### Natural Joins
+
+Natural joins exist in MySQL, but is not recommended,
+as it may produce unexpected results.
+
+```sql
+-- Joins 'orders' and 'customers' based on common columns,
+-- i.e. columns that have the same name.
+SELECT o.order_id,
+       c.first_name
+FROM orders o
+         NATURAL JOIN customers c
+```
+
+We're letting the database engine _guess_ the common column name.
+Thus, unexpected behavior may occur.
+
+### Cross joins
+
+We use cross join to combine or join every record
+from the first table with every record in the second table.
+
+```sql
+SELECT c.first_name AS customer,
+       p.name       AS product
+FROM customers c
+         CROSS JOIN products p
+ORDER BY c.first_name
+```
+
+A real world example of when it makes sense to use `CROSS JOIN` is
+when we have table of sizes (e.g. `small`, `medium`, `large`) and a table of colors
+(e.g. `red`, `blue`, `green`), and we want to combine all sizes with all colors.
+
+In the example above, we use the explicit syntax for cross join: `CROSS JOIN`.
+We can also use the implicit cross join syntax:
+
+```sql
+SELECT c.first_name AS customer,
+       p.name       AS product
+FROM customers c,
+     products p
+ORDER BY c.first_name
+```
+
+Both queries produce the same result.
+
+### Unions
+
+We can also combine **rows** from multiple tables. This is extremely powerful.
+
+Let's say we have many records spanning over several years. We want to create a report
+displaying which records are still `'Active'` and which are `'Archived'` based on
+a given date (e.g. `2019-01-01`).
+
+We write the following two queries:
+
+```sql
+-- Active orders
+SELECT order_id,
+       order_date,
+       'Active' AS status
+FROM orders o
+WHERE o.order_date >= '2019-01-01';
+
+-- Archived orders
+SELECT order_id,
+       order_date,
+       'Archived' AS status
+FROM orders o
+WHERE o.order_date < '2019-01-01'
+```
+
+We can combine the result of these two queries using the `UNION` operator:
+
+```sql
+(-- Active orders
+    SELECT order_id,
+           order_date,
+           'Active' AS status
+    FROM orders o
+    WHERE o.order_date >= '2019-01-01')
+
+UNION
+
+(-- Archived orders
+    SELECT order_id,
+           order_date,
+           'Archived' AS status
+    FROM orders o
+    WHERE o.order_date < '2019-01-01')
+```
+
+This can of course be done across tables, and across databases.
+
+#### Important to note
+
+The number of columns returned by each `SELECT` must be equal.
+Else, we get an error:
+
+```sql
+(SELECT first_name, last_name
+ FROM customers c)
+-- This UNION will result in an error,
+-- due to unequal number of columns in each SELECT statement.
+UNION
+(SELECT name
+ FROM shippers s)
+```
+
+#### An exercise using `UNION`
+
+Write a query to produce this following report:
+
+![Union Exercise](./img/union-exercise/1.png)
+
+```sql
+((SELECT c.customer_id,
+         c.first_name,
+         c.points,
+         'Bronze' AS type
+  FROM customers c
+  WHERE c.points < 2000)
+ UNION
+ (SELECT c.customer_id,
+         c.first_name,
+         c.points,
+         'Silver' AS type
+  FROM customers c
+  WHERE c.points >= 2000
+    AND c.points <= 3000)
+ UNION
+ (SELECT c.customer_id,
+         c.first_name,
+         c.points,
+         'Bronze' AS type
+  FROM customers c
+  WHERE c.points > 3000)
+) ORDER BY first_name
+```
