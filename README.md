@@ -1388,3 +1388,172 @@ We get the following (quite complex) query:
 I first calculated the desired results for `'First half of 2019'`, and then
 `UNION` them with the rest. It's not that complicated when you build the query
 step by step.
+
+### The `GROUP BY` clause
+
+#### Grouping by a single column
+
+In the previous section about aggregate functions, we learned how to create
+summaries for our data like the following query:
+
+```sql
+SELECT SUM(invoice_total) AS total_sales
+FROM invoices
+```
+
+What if we want to create a summary **per client**? We need to group the data!
+
+```sql
+`SELECT client_id, SUM(invoice_total) AS total_sales
+FROM invoices
+GROUP BY client_id
+ORDER BY total_sales DESC
+```
+
+Now, instead of 1 value for `total_sales`, we now see the `total_sales` per
+`client_id`. In other words, we now see the total sales each given client has
+payed us.
+
+Naturally, we can add keywords to the query:
+
+```sql
+SELECT client_id,
+       SUM(invoice_total) AS total_sales
+FROM invoices
+WHERE invoice_date >= '2019-07-01'
+GROUP BY client_id
+ORDER BY total_sales DESC
+```
+
+**Note the order of these keywords!** We get a syntax error if the order is
+incorrect.
+
+#### Grouping by multiple columns
+
+We want to see the data from before, but this time **per state and city for our
+clients**.
+
+```sql
+SELECT state,
+       city,
+       SUM(invoice_total) AS total_sales
+FROM invoices i
+         JOIN clients c on i.client_id = c.client_id
+GROUP BY state, city
+```
+
+Now, we see the `total_sales` for each `city` and `state` combination.
+
+#### An exercise using `GROUP BY`
+
+Produce the following result:
+
+![Group by 1](./img/group-by/1.png)
+
+```sql
+SELECT p.date,
+       pm.name       AS payment_method,
+       SUM(p.amount) AS total_payment
+FROM payments p
+         JOIN payment_methods pm on p.payment_method = pm.payment_method_id
+GROUP BY p.date, p.payment_method
+ORDER BY p.date
+```
+
+### The `HAVING` clause
+
+We have the following query from before:
+
+```sql
+SELECT client_id,
+       SUM(invoice_total) AS total_sales
+FROM invoices
+GROUP BY client_id
+```
+
+Let's say this query gives us a client with `total_sales` less than 500, and
+**we want to limit our result to client that fulfill a given criteria**.
+
+We cannot use the `WHERE` clause, because we group our data **after** the
+`WHERE` clause.
+
+```sql
+SELECT client_id,
+       SUM(invoice_total) AS total_sales
+FROM invoices
+WHERE total_sales > 500 -- This gives us a syntax error!
+GROUP BY client_id
+```
+
+We use the `HAVING` clause to filter data **after** the `GROUP BY` clause.
+
+```sql
+SELECT client_id,
+       SUM(invoice_total) AS total_sales
+FROM invoices
+GROUP BY client_id
+HAVING total_sales > 500
+```
+
+We can create more complex conditionals, of course.
+
+```sql
+SELECT client_id,
+       SUM(invoice_total) AS total_sales,
+       COUNT(*)           AS number_of_invoices
+FROM invoices
+GROUP BY client_id
+HAVING total_sales > 500 AND number_of_invoices > 5
+```
+
+**The columns used in the `HAVING` clause has to appear in the `SELECT`
+statement**.
+
+#### Exercise using `HAVING` clause
+
+We want to get the customers located in Virginia (VA) that have spent more than
+$100.
+
+```sql
+SELECT c.customer_id,
+       c.first_name,
+       c.last_name,
+       SUM(quantity * unit_price) AS total_sales
+FROM customers c
+         JOIN orders o on c.customer_id = o.customer_id
+         JOIN order_items oi on o.order_id = oi.order_id
+WHERE state = 'VA'
+GROUP BY c.customer_id, c.first_name, c.last_name
+HAVING total_sales > 100
+```
+
+### The `ROLLUP` operator
+
+We can add `WITH ROLLUP` after `GROUP BY` to add an extra row that summarizes
+the data.
+
+`ROLLUP` only applies to columns that aggregate values. For instance, it does
+not makes sense to `ROLLUP` all `client_id`'s, as they are not aggregated.
+
+```sql
+SELECT client_id,
+       SUM(invoice_total) AS total_sales
+FROM invoices
+GROUP BY client_id
+WITH ROLLUP
+```
+
+`ROLLUP` also works when grouping by multiple columns.
+
+```sql
+SELECT state,
+       city,
+       SUM(invoice_total) AS total_sales
+FROM invoices i
+         JOIN clients c on i.client_id = c.client_id
+GROUP BY state, city
+WITH ROLLUP
+```
+
+**Note that `ROLLUP` is only available in MySQL. Other database services may
+have equivalent operators with different names.**
