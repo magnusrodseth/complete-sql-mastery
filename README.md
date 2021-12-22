@@ -1243,3 +1243,148 @@ WHERE client_id = (SELECT *
                     FROM clients
                     WHERE name = 'Myworks')
 ```
+
+## Summarizing Data
+
+### Aggregate Functions
+
+A function is simply a piece of code that can be reused.
+
+SQL aggregate functions takes a series of values, and aggregate them in order to
+**create a single value**.
+
+Examples of aggregate functions include: `MAX()`, `MIN()`, `SUM()`, `AVG()`,
+`COUNT()`.
+
+As an example, we can find the max `invoice_total` by querying the following:
+
+```sql
+SELECT MAX(invoice_total) AS highest,
+       MIN(invoice_total) AS lowest,
+       AVG(invoice_total) AS average
+FROM invoices
+```
+
+We can also use these aggregate functions on values that are not numeric.
+
+```sql
+SELECT MAX(payment_date)  AS highest_payment_date,
+       MIN(invoice_total) AS lowest,
+       AVG(invoice_total) AS average
+FROM invoices
+```
+
+A complete report may look like this:
+
+```sql
+SELECT MAX(invoice_total)   AS highest,
+       MIN(invoice_total)   AS lowest,
+       AVG(invoice_total)   AS average,
+       SUM(invoice_total)   AS total,
+       COUNT(invoice_total) AS number_of_invoices
+FROM invoices
+```
+
+**Aggregate functions only operate on non-null values!**
+
+`payment_date` may have `NULL` values. Thus, a query for `COUNT(payment_date)`
+**returns the number of non-null values**.
+
+```sql
+SELECT COUNT(payment_date) AS number_of_payments
+FROM invoices
+```
+
+We can get the total number of records, regardless of whether they are `NULL` or
+not using the following query:
+
+```sql
+SELECT COUNT(*) AS number_of_records
+FROM invoices
+```
+
+Most of the time, we use column names as parameters for aggregate functions.
+However, we may write expressions and insert that into the aggregate function.
+
+```sql
+SELECT MAX(invoice_total)       AS highest,
+       MIN(invoice_total)       AS lowest,
+       AVG(invoice_total)       AS average,
+       SUM(invoice_total * 1.1) AS total,
+       COUNT(invoice_total)     AS number_of_invoices,
+       COUNT(payment_date)      AS number_of_payments
+FROM invoices;
+```
+
+We can also apply filters using the `WHERE` clause. The aggregate function is
+applied to the records that match the given filter.
+
+```sql
+SELECT MAX(invoice_total)       AS highest,
+       MIN(invoice_total)       AS lowest,
+       AVG(invoice_total)       AS average,
+       SUM(invoice_total * 1.1) AS total,
+       COUNT(invoice_total)     AS number_of_invoices,
+       COUNT(payment_date)      AS number_of_payments
+FROM invoices
+WHERE invoice_date > '2019-07-01'
+```
+
+By default, all aggregate functions accept duplicates. If we do not want to
+include duplicates, we need to use the `DISTINCT` keyword in order to only get
+unique entries.
+
+```sql
+SELECT MAX(invoice_total)        AS highest,
+       MIN(invoice_total)        AS lowest,
+       AVG(invoice_total)        AS average,
+       SUM(invoice_total * 1.1)  AS total,
+       COUNT(invoice_total)      AS number_of_invoices,
+       COUNT(DISTINCT client_id) AS number_of_clients
+FROM invoices
+WHERE invoice_date > '2019-07-01'
+```
+
+#### Exercise using aggregate functions
+
+Simply generate the following report from the `invoices` table:
+
+![Aggregate functions 1](./img/aggregate-functions/1.png)
+
+We get the following (quite complex) query:
+
+```sql
+(
+    (-- First half of 2019
+        SELECT 'First half of 2019'               AS date_range,
+               SUM(invoice_total)                 AS total_sales,
+               SUM(payment_total)                 AS total_payments,
+               SUM(invoice_total - payment_total) AS what_we_expect
+        FROM invoices
+        WHERE invoice_date BETWEEN '2019-01-01' AND '2019-06-30')
+
+    UNION
+
+    (-- Second half of 2019
+        SELECT 'Second half of 2019'              AS date_range,
+               SUM(invoice_total)                 AS total_sales,
+               SUM(payment_total)                 AS total_payments,
+               SUM(invoice_total - payment_total) AS what_we_expect
+        FROM invoices
+        WHERE invoice_date BETWEEN '2019-07-01' AND invoice_date <= '2019-12-31')
+
+    UNION
+
+    (-- Total
+        SELECT 'Total'                            AS date_range,
+               SUM(invoice_total)                 AS total_sales,
+               SUM(payment_total)                 AS total_payments,
+               SUM(invoice_total - payment_total) AS what_we_expect
+        FROM invoices
+        WHERE invoice_date BETWEEN '2019-01-01' AND invoice_date <= '2019-12-31')
+)
+```
+
+I first calculated the desired results for `'First half of 2019'`, and then
+`UNION` them with the rest. It's not that complicated when you build the query
+step by step.
