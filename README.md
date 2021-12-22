@@ -1557,3 +1557,329 @@ WITH ROLLUP
 
 **Note that `ROLLUP` is only available in MySQL. Other database services may
 have equivalent operators with different names.**
+
+## Writing Complex Queries
+
+### Sub query / sub queries
+
+We want to write a query that finds products that are more expensive than
+'Lettuce'.
+
+First, I write the query to get the `unit_price` for lettuce. Then, I use this
+result as a sub query to find all other products that fulfill the given
+criteria.
+
+```sql
+SELECT *
+FROM products
+WHERE unit_price >
+      (-- unit_price of lettuce
+          SELECT unit_price
+          FROM products
+          WHERE name REGEXP '^Lettuce');
+```
+
+#### An exercise using sub queries
+
+Using the `sql_hr` database, find employees that earn more money than average.
+
+```sql
+SELECT first_name, last_name, salary
+FROM employees
+WHERE salary >
+      (-- Find average salary of employees
+          SELECT AVG(salary)
+          FROM employees
+      );
+```
+
+### More about the `IN` operator
+
+Find the products that have never been ordered.
+
+```sql
+SELECT *
+FROM products
+WHERE product_id NOT IN
+      (-- Find products that have been ordered
+          SELECT DISTINCT p.product_id
+          FROM products p
+                   JOIN order_items oi on p.product_id = oi.product_id
+      )
+```
+
+#### An exercise using the `IN` operator
+
+Find the clients without invoices.
+
+```sql
+SELECT *
+FROM clients c
+WHERE c.client_id NOT IN
+      (-- Find clients with invoices
+          SELECT DISTINCT client_id
+          FROM invoices)
+```
+
+### Sub queries versus joins
+
+Oftentimes, we can rewrite a sub query using a join, and vice versa. Look at
+these examples:
+
+```sql
+-- Using a sub query
+SELECT *
+FROM clients c
+WHERE c.client_id NOT IN
+      (-- Find clients with invoices
+          SELECT DISTINCT client_id
+          FROM invoices)
+
+-- Using a join statement
+SELECT *
+FROM clients c
+         LEFT JOIN invoices i on c.client_id = i.client_id
+WHERE invoice_id IS NULL
+```
+
+Deciding on which statement to use is a matter of two things, primarily:
+
+1. **Performance**. This is elaborated upon later in the course when talking
+   about an "execution plan".
+2. **Readability**. Assuming two queries have the same execution time, you
+   should always go for the query that is most readable.
+
+In the example above, the statement using a sub query is generally more
+intuitive to understand. **Always pay great attention to the readability of the
+code**.
+
+#### An exercise on sub queries versus joins
+
+Find customers who have ordered lettuce. Select `customer_id`, `first_name`,
+`last_name`.
+
+```sql
+-- Using sub queries
+SELECT customer_id,
+       first_name,
+       last_name
+FROM customers c
+WHERE customer_id IN
+      (-- Get customer_id from orders of 'Lettuce'
+          SELECT o.customer_id
+          FROM order_items
+                   JOIN orders o USING (order_id)
+          WHERE product_id =
+                (-- Get product_id of 'Lettuce'
+                    SELECT product_id
+                    FROM products
+                    WHERE name REGEXP '^Lettuce'
+                )
+      );
+
+-- Using join statement
+SELECT DISTINCT customer_id,
+                first_name,
+                last_name
+FROM customers c
+         JOIN orders o USING (customer_id)
+         JOIN order_items USING (order_id)
+WHERE product_id =
+      (-- Get product_id of 'Lettuce'
+          SELECT product_id
+          FROM products
+          WHERE name REGEXP '^Lettuce'
+      )
+```
+
+The second statement - using `JOIN` - is more readable and also a more natural
+way to relate tables together.
+
+### The `ALL` keyword
+
+Select invoices larger than the maximum invoice of client with `client_id = 3`.
+This can be solved using ordinary `WHERE` and a sub query, but may also be
+solved using the `ALL` keyword.
+
+```sql
+-- Using WHERE (without ALL)
+SELECT *
+FROM invoices i
+WHERE invoice_total >
+      (-- Get max invoice for client with client_id=3
+          SELECT MAX(invoice_total) as max_invoice
+          FROM invoices i
+          WHERE client_id = 3
+      )
+
+-- Using ALL
+SELECT *
+FROM invoices i
+WHERE invoice_total > ALL
+      (-- Get max invoice for client with client_id=3
+          SELECT invoice_total
+          FROM invoices i
+          WHERE client_id = 3
+      )
+```
+
+In the second solution, note how the sub query returns multiple rows.
+
+### The `ANY` keyword
+
+Select clients with at least 2 invoices.
+
+```sql
+-- Solution without ANY
+SELECT *
+FROM clients
+WHERE client_id IN (-- Clients with 2 or more invoices
+    SELECT client_id
+    FROM invoices i
+    GROUP BY client_id
+    HAVING COUNT(*) >= 2
+)
+
+-- Solution with ANY
+SELECT *
+FROM clients
+WHERE client_id = ANY (-- Clients with 2 or more invoices
+    SELECT client_id
+    FROM invoices i
+    GROUP BY client_id
+    HAVING COUNT(*) >= 2
+)
+```
+
+These two solution are equivalent. In other words: **`IN` is equivalent to
+`= ANY`**.
+
+### Correlated sub queries
+
+A correlated sub query is a sub query that is related to the outer query. In the
+sub query, we reference the alias from the outer table. See example below.
+
+Select employees whose salary is above the average in their office.
+
+```sql
+SELECT *
+FROM employees e
+WHERE salary > (-- Average salary per office
+    SELECT AVG(salary) as avg_salary
+    FROM employees impl_e
+    WHERE e.office_id = impl_e.office_id
+)
+```
+
+One could write out the pseudo-code for the query above like this:
+
+```txt
+- for each employee
+    - calculate the average salary for each employee's office
+- return the employee if the employee's salary > average salary
+```
+
+This is almost like a nested for loop. Thus, these queries may be slow. We can
+see that the inner sub query is related to the outer query.
+
+#### An exercise about correlated sub queries
+
+Get the invoices that are larger than the client's average invoice amount.
+
+```sql
+SELECT *
+FROM invoices i
+WHERE invoice_total > (-- Client's average invoice amount
+    SELECT AVG(invoice_total)
+    FROM invoices _i
+    WHERE _i.client_id = i.client_id
+)
+```
+
+**A note to self:** If you work with correlated sub queries, a nested query
+could perhaps have an equal alias, but with an underscore prefix like above.
+Nested loops would then look like this:
+`alias -> _alias --> __alias --> etc...`.
+
+### The `EXISTS` operator
+
+We want to select clients that have an invoice. There are many ways to achieve
+this.
+
+```sql
+-- Using IN
+SELECT *
+FROM clients
+WHERE client_id IN (
+    SELECT DISTINCT client_id
+    FROM invoices
+)
+
+-- Using JOIN
+SELECT DISTINCT c.client_id
+FROM clients c
+         JOIN invoices i on c.client_id = i.client_id
+
+-- Using EXISTS
+SELECT *
+FROM clients c
+WHERE EXISTS(
+              SELECT i.client_id
+              FROM invoices i
+              WHERE i.client_id = c.client_id
+          )
+```
+
+The last example - the one using `EXISTS` - is a correlated sub query.
+
+**The most important part about `EXISTS`**: If the sub query used after the `IN`
+operator produces a large result, it is more efficient to use the `EXISTS`
+keyword. This is because when we use `EXISTS`, followed by a sub query, the sub
+query does not return a result set, but rather a boolean `TRUE` or `FALSE` to
+the outer query.
+
+#### An exercise testing `EXISTS`
+
+Find the products that have never been ordered.
+
+```sql
+SELECT *
+FROM products p
+WHERE NOT EXISTS(
+              SELECT product_id
+              FROM order_items oi
+              WHERE oi.product_id = p.product_id
+          )
+```
+
+### Sub queries in the `SELECT` clause
+
+We want to produce a report that looks like this:
+
+![Sub queries in `SELECT`](./img/sub-queries-in-select/1.png)
+
+We can write the following statement, using sub queries in the `SELECT` clause:
+
+```sql
+SELECT invoice_id,
+       invoice_total,
+       (SELECT AVG(invoice_total)
+        FROM invoices)                            AS invoice_average,
+       (invoice_total - (SELECT invoice_average)) AS difference
+FROM invoices
+```
+
+### Sub queries in the `FROM` clause
+
+This is quite straightforward. Just like you can have a sub query in the
+`SELECT` clause, you can also put a sub query in the `FROM` clause.
+
+Whenever we use sub query in the `FROM` clause, we need to give that part an
+alias. **This is required**.
+
+There is way to **not** use sub queries in the `FROM` clause called views. We
+can store the views in our database, and give the view an alias to use later.
+We'll look at this later in the course.
+
+A rule of thumb should be: **Only use sub queries in `FROM` when the sub query
+is simple**.
