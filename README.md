@@ -1883,3 +1883,299 @@ We'll look at this later in the course.
 
 A rule of thumb should be: **Only use sub queries in `FROM` when the sub query
 is simple**.
+
+## Essential MySQL functions
+
+### Numeric functions
+
+#### `ROUND`
+
+We can round a number using the `ROUND()` function. The function optionally
+takes an argument for precision. Examples can be found below.
+
+```sql
+SELECT ROUND(5.73); -- > 6
+SELECT ROUND(5.73, 1); -- > 5.7
+SELECT ROUND(5.73, 2); -- > 5.73
+SELECT ROUND(5.73, 0); -- > 6
+```
+
+#### `TRUNCATE()`
+
+`TRUNCATE()` does exactly that; it truncates the value with provided precision.
+
+```sql
+SELECT TRUNCATE(5.7345, 2); -- > 5.73
+SELECT TRUNCATE(6, 2): -- > 6
+```
+
+#### `CEILING()`
+
+Returns the smallest integer greater than or equal to the provided number.
+
+```sql
+SELECT CEILING(5.1); -- > 6
+SELECT CEILING(5); -- > 5
+```
+
+#### `FLOOR()`
+
+Returns the largest integer less than or equal to the provided number.
+
+```sql
+SELECT FLOOR(5.2) -- > 5
+```
+
+#### `ABS()`
+
+Returns the absolute value of the provided number.
+
+```sql
+SELECT ABS(-2.5); -- > 2.5
+SELECT ABS(3); -- > 3
+```
+
+#### `RAND()`
+
+Generates a random floating point number between 0 and 1.
+
+```sql
+SELECT RAND()
+```
+
+More numeric functions can be found by Googling "MySQL numeric functions".
+
+### String functions
+
+#### `LENGTH()`
+
+Get the number of characters in the string.
+
+```sql
+SELECT LENGTH('sky') -- > 3
+```
+
+#### `UPPER()`
+
+Converts the string to upper case.
+
+```sql
+SELECT UPPER('sky'); -- > 'SKY'
+```
+
+#### `LOWER()`
+
+Converts the string to lower case.
+
+```sql
+SELECT LOWER('Sky') -- > 'sky'
+```
+
+#### Trimming functions
+
+```sql
+SELECT LTRIM('   Sky'); -- > 'Sky'
+SELECT RTRIM('Sky   '); -- > 'Sky'
+SELECT TRIM('  Sky  '); -- > 'Sky'
+```
+
+Very straightforward.
+
+#### Substrings
+
+```sql
+SELECT LEFT('SQL database', 3); -- > 'SQL'
+SELECT RIGHT('SQL database', 8); -- > 'database'
+SELECT SUBSTRING('Hello, world!', 8, 12); -- > 'world!'
+SELECT REPLACE('Hello, world!', 'world', 'bar'); -- > 'Hello, bar!'
+```
+
+#### Find index of character
+
+Note that the search is **case insensitive**.
+
+```sql
+SELECT LOCATE('world', 'Hello, world!'); -- > 8
+SELECT LOCATE('D', 'Hello, world!'); -- > 12
+SELECT LOCATE('z', 'Hello, world!'); -- > 0
+```
+
+Note that non-existing characters returns `0`, not `-1`. This way, we cannot
+always use `LOCATE` to find a substring in a string.
+
+#### `CONCAT`
+
+Pretty straightforward, but can be very useful in certain tables.
+
+```sql
+SELECT CONCAT(first_name, ' ', last_name) AS full_name
+FROM customers
+```
+
+### Date functions in MySQL
+
+#### Displaying date and time
+
+```sql
+-- Get current date and time
+SELECT NOW();
+
+-- Get current date, without time
+SELECT CURDATE();
+
+-- Get current time, without date
+SELECT CURTIME();
+
+-- Get year, month, date
+SELECT YEAR(NOW()), MONTH(NOW()), DAY(NOW());
+
+-- Get hour, minute, seconds
+SELECT HOUR(NOW()), MINUTE(NOW()), SECOND(NOW());
+
+-- Get name of month, name of day
+SELECT MONTHNAME(NOW()), DAYNAME(NOW());
+```
+
+#### `EXTRACT()`
+
+This function is part of the general SQL language. If you need to port MySQL to
+other database management system, you can use `EXTRACT()`.
+
+```sql
+SELECT EXTRACT(DAY FROM NOW())
+```
+
+Note that `EXTRACT` takes basically an enum, e.g. `DAY`, `MONTH`, `YEAR_MONTH`,
+etc... Read the docs for more information.
+
+### Formatting date and time
+
+```sql
+SELECT DATE_FORMAT(NOW(), '%y'); -- > 2 digit representation of the year
+SELECT DATE_FORMAT(NOW(), '%Y'); -- > 4 digit representation of the year
+
+SELECT DATE_FORMAT(NOW(), '%m %Y'); -- > 'mm yyyy'
+SELECT DATE_FORMAT(NOW(), '%M %Y'); -- > 'month_name yyyy'
+
+SELECT DATE_FORMAT(NOW(), '%M %d %Y'); -- > 'month_name dd yyyy'
+SELECT DATE_FORMAT(NOW(), '%M %D %Y'); -- > 'month_name ddth yyyy'
+```
+
+For more information about date format and time format, simply read the docs.
+
+### Calculating date and time
+
+```sql
+SELECT DATE_ADD(NOW(), INTERVAL 1 DAY); -- > Next day, with the same time
+SELECT DATE_ADD(NOW(), INTERVAL 1 YEAR); -- > Next year, with the same date
+
+SELECT DATE_ADD(NOW(), INTERVAL -1 YEAR); -- > Last year, with the same date
+SELECT DATE_SUB(NOW(), INTERVAL 1 YEAR); -- > Last year, with the same date
+
+SELECT DATEDIFF(NOW(), '2019-01-01'); -- > Difference between now and beginning of 2019, **in days**
+
+SELECT TIME_TO_SEC(NOW()); -- > Number of seconds elapsed since midnight
+SELECT TIME_TO_SEC('01:00'); -- > 3600
+SELECT TIME_TO_SEC('00:01'); -- > 60
+SELECT (TIME_TO_SEC('09:00') - TIME_TO_SEC('09:01')) -- > -60
+```
+
+### The `IFNULL` and `COALESCE` functions
+
+Not all orders have an assigned shipper. We can write a readable query using the
+`IFNULL` function.
+
+```sql
+SELECT order_id,
+       IFNULL(shipper_id, 'Not assigned') AS shipper
+FROM orders o
+```
+
+Sometimes, it is useful to have a fallback value in a record. This is when we
+use the `COALESCE` function.
+
+```sql
+SELECT order_id,
+       COALESCE(shipper_id, comments, 'Not assigned') AS shipper
+FROM orders o
+```
+
+In the example above, the `shipper_id` will be used if it is not null. If
+`shipper_id` is null, we check if the given `comments` value is null. If not, we
+use it. If it is, we display `Not assigned`.
+
+Another example, using string functions too:
+
+```sql
+SELECT CONCAT(first_name, ' ', last_name) AS customer,
+       IFNULL(phone, 'Unknown')           AS phone
+FROM customers
+```
+
+### The `IF` function
+
+`IF` takes a boolean statement, what to do if the statement is true, and what to
+do if the boolean statement is false.
+
+```sql
+SELECT order_id,
+       order_date,
+       IF(YEAR(order_date) = YEAR(NOW()),
+          'Active',
+          'Archived') AS category
+FROM orders o
+```
+
+An example where we want to display the frequency that a product has been
+ordered:
+
+```sql
+SELECT product_id,
+       name,
+       COUNT(*)                                   AS orders,
+       IF(COUNT(*) > 1, 'Many times', 'One time') AS frequency
+FROM products p
+         JOIN order_items oi USING (product_id)
+GROUP BY p.product_id
+```
+
+### The `CASE` operator
+
+If we need several conditionals, we use the `CASE` operator.
+
+```sql
+SELECT order_id,
+       CASE
+           WHEN YEAR(order_date) = YEAR(NOW())
+               THEN 'Active'
+           WHEN YEAR(order_date) = YEAR(NOW()) - 1
+               THEN 'Last year'
+           WHEN YEAR(order_date) < YEAR(NOW()) - 1
+               THEN 'Archived'
+           ELSE 'Future'
+           END AS category
+FROM orders o
+```
+
+#### An exercise using `CASE`
+
+Recreate the following report:
+
+![Case function 1](./img/case-function/1.png)
+
+We get the following:
+
+```sql
+SELECT CONCAT(first_name, ' ', last_name) AS customer,
+       points,
+       CASE
+           WHEN points >= 3000
+               THEN 'Gold'
+           WHEN points >= 2000 AND points < 3000
+               THEN 'Silver'
+           ELSE
+               'Bronze'
+           END                            AS status
+FROM customers c
+ORDER BY points DESC
+```
