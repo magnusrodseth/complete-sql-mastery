@@ -1,5 +1,17 @@
 # Code With Mosh: Complete SQL Mastery
 
+## Introduction
+
+This course really does cover all parts of SQL. Therefore, my notes are split
+into several `.md` files, collectively covering the entire course.
+
+I have chosen to split my notes in two: (1) designing databases and (2)
+everything else.
+
+[Click here](./designing-databases/README.md) to read more about **designing
+databases**. Carry on reading below this point for everything else in the
+course.
+
 ## Retrieving Data from a Single Table
 
 ### The `SELECT` statement
