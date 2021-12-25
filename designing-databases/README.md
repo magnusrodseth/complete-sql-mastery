@@ -117,3 +117,84 @@ but rather a language-agnostic type `string`.
 Note the difference in relationship from the conceptual model to the logical
 model. We had to add another entity in order to maintain the proper relationship
 between entities.
+
+Also note that keeping `tags` of type `string`, with a separator is not a good
+idea for production. This is merely done to keep things a bit simple.
+
+## Physical models
+
+A physical model is the implementation of a logical model using a specific
+database technology. This course uses MySQL.
+
+Using MySQLWorkbench (`brew install mysqlworkbench` if it is not yet
+downloaded), start by clicking `File -> New Model`. Rename the schema by
+right-clicking the default `mydb` name, and click `Edit Schema...`. Click the
+`Add diagram` under the `EER Diagram` section, in order to create an _Enhanced
+Entity Relationship diagram_.
+
+When naming tables, one can both use single or plural form of the word. In a
+sense, a table is a container for each entity, and should therefore be plural.
+On the other hand, you could say "A **student** has an id, etc...", which would
+make the naming convention single. **If there is already a convention in-place,
+don't break that convention!**
+
+We populate the physical model, using the logical model as reference. This gives
+us the following:
+
+![WIP Physical model](./img/physical-model-wip-1.png)
+
+Note that we have not populated the tables with primary keys or their
+relationships. This is a work in progress physical model.
+
+## Primary keys
+
+A primary key is a column that uniquely identifies each record in a given table.
+
+If we were to give the `students` table a primary key of `email`, this would
+**not** be a good idea. Given the relationship between a student and an
+enrollment, this would mean repeating potentially very long strings in both
+tables. Additionally, **a primary key should always remain the same!** A student
+may change their email later. Thus, we add an ID column `student_id`. This kind
+of column should be automatically incremented by MySQL.
+
+We get the following physical model, still a work in progress:
+
+![WIP Physical model 2](./img/physical-model-wip-2.png)
+
+What about `enrollments`? We'll look at that next.
+
+## Foreign Keys
+
+We have a one-to-many relationship between a student and an enrollment. We also
+have a one-to-many relationship between a course and an enrollment.
+
+When using a one-to-many relationship, the entity with the primary key is called
+the parent table or the primary key table, and the entity without a primary is
+called the child table or the foreign key table. In our case, the `students`
+table is the parent table, and the `enrollments` table is the child table.
+
+In MySQLWorkbench, a column is automatically added when implementing the
+one-to-many relationship between two tables.
+
+**A foreign key in one table is a column that references the primary key in
+another table.**
+
+In order to create the primary key for `enrollments`, we can use a composite
+primary key. Another approach is to implement a primary key `enrollment_id` that
+automatically increments, just like in `students` and `courses`.
+
+By using a composite primary key, we prevent bad data from being inserted, e.g.
+a student enrolling twice. However, if we later add another table that is a
+child in a one-to-many relationship between it and `enrollments`, that new table
+must also have the foreign keys `student_id` and `course_id`, just like
+`enrollments` has.
+
+This is not relevant for our case, and we can safely use a composite primary key
+in the `enrollments` table. If we have this problem in the future, we can come
+back and refactor the data model.
+
+We now have the following physical model:
+
+![WIP Physical model 3](./img/physical-model-wip-3.png)
+
+## Foreign Key Constraints
