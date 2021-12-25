@@ -43,11 +43,13 @@ It involves 4 steps:
 
 ![Data modelling](./img/data-modelling.png)
 
-## Conceptual models
+## Our example business logic
 
 Let's say we want to build a website for selling online courses. People can sign
 up and enroll in one or more courses. A course can have one or more tags, for
 instance "frontend" or "backend".
+
+## Conceptual models
 
 Before creating the database, we need to figure out the conceptual model. The
 conceptual model represents the entities and their relationships.
@@ -72,3 +74,46 @@ the perfect design on your first attempt.
 In the conceptual model above, we do not care about the type of each attribute.
 It is simply a conceptual model! We use it to communicate with the stakeholders,
 to ensure we're both on the same page.
+
+## Logical models
+
+We'll now use the conceptual model from before, and refine it in order to make a
+logical model. The logical model shall be independent of database technology.
+
+Now, we need to specify the type of relationship between our entities.
+
+### Types of relationships
+
+We have different types of relationships:
+
+1. **One-to-one**. Example: 1 student can enroll in 1 course. 1 course can only
+   be taken by 1 student.
+
+![One-to-one](./img/relationships/one-to-one.png)
+
+2. **One-to-many**. Example: 1 student can enroll in several courses. A course
+   can only be taken by 1 student.
+
+![One-to-many](./img/relationships/one-to-many.png)
+
+3. **Many-to-many**. Example: A student can enroll in several courses. A course
+   can be taken by several students.
+
+![Many-to-many](./img/relationships/many-to-many.png)
+
+Others relationships are variations on the above-mentioned types.
+
+What if we want to store the date that a student enrolled in a course. It is
+neither an attribute of the student or the course. **It is an attribute of the
+relationship; the enrollment**. If we meet such cases when modelling, we need to
+create a new entity: `Enrollment`.
+
+Note that the use of `string` as type for the `name` of a `Student` is
+independent on the database technology. We do not declare `name` as `VARCHAR`,
+but rather a language-agnostic type `string`.
+
+![Logical model](./img/logical-model.png)
+
+Note the difference in relationship from the conceptual model to the logical
+model. We had to add another entity in order to maintain the proper relationship
+between entities.
