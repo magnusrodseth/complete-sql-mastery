@@ -198,3 +198,37 @@ We now have the following physical model:
 ![WIP Physical model 3](./img/physical-model-wip-3.png)
 
 ## Foreign Key Constraints
+
+When a table has a foreign key, we need to constrain it in order to prevent
+corrupted data.
+
+We determine what should happen "On update" and "On delete" to a given table.
+
+**We select `CASCADE` on update**. With this, MySQL automatically updates the
+record in the child table if the primary key in the parent table changes.
+
+If we use `RESTRICT`, then the update described above will be rejected.
+
+If we use `SET NULL`, the foreign key will be set to null if the primary key in
+the parent table changes. In this case, we end up with a child record (in
+`enrollments`) that does not have a parent (in `students`). This is called an
+orphan record. This is not desired to have in a database. Orphan records are bad
+data; we don't know which student the enrollment is for.
+
+We can also select `CASCADE` on delete. This means that an enrollment will
+automatically be deleted if the student is deleted. However, choosing this
+depends on the context. If we select this, then we won't be able to see which
+courses were the most popular, historically.
+
+In our example, we want MySQL to reject the delete operation.
+
+This is necessary to do when we use foreign keys, in order to prevent bad and
+corrupted data.
+
+As a rule of thumb, we often want to `CASCADE` on update, but delete depends on
+the context. Always check with the stakeholders what they want to do with the
+data, and what consequences this has for deleting data.
+
+## Normalization
+
+TODO
