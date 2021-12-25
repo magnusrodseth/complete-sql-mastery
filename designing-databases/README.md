@@ -231,4 +231,32 @@ data, and what consequences this has for deleting data.
 
 ## Normalization
 
-TODO
+We also need to make sure that our database handles redundancy and duplicate
+entries. We don't want the size of the data in our database to grow
+unnecessarily large.
+
+Normalization is the process of reviewing our design, and ensuring that the
+design follows some predefined rules that prevent data redundancy.
+
+There exists the "7 normal forms", where each form assumes that the previous
+form is in-place. For most applications, only the 3 first normal forms are
+needed to apply to our design. The course focuses on these first 3 normal forms.
+
+### First Normal Form (1NF)
+
+**Each cell in a row should have a single value, and we cannot have repeated
+columns**.
+
+The `tags` column in our `courses` table imply that we're going to have multiple
+values in a single cell, separated using a separator (e.g. `,`). We also don't
+know how many tags a course is going to have ahead of time, so we cannot create
+columns for `tag1`, `tag2`, etc... This approach is not scalable.
+
+To solve this problem, we need to extract the `tags` column out of the `courses`
+table and treat it as its own table called `tags`. Then we'll add a many-to-many
+relationship between `courses` and `tags`.
+
+We will soon see how the relationship between `courses` and `tags` ends up being
+implemented.
+
+#### Link Tables
