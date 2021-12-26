@@ -369,4 +369,86 @@ Always think about the requirements. If we have `customers` with multiple
 shipping addresses, we should separate this into its own table `address`. If
 this is not a requirement, there may be no need to separate this data.
 
-## Don't model the universe!
+## Don't model the universe
+
+One of the mistake you may make is to over-engineer the solution in order to
+support future requirements. Most of the time, these future requirements are
+only in your head and is not realistic. As a result, you forget about the scope
+of the project; the context.
+
+**Solve today's problems, not future problems _that may never happen_**.
+
+Build a model for the problem domain and its requirements, not the entire real
+world.
+
+Don't overthink "What if...?" scenarios.
+
+**Simplicity is the ultimate sophistication**.
+
+Don't be afraid of changes. Changes will happen, whether you predict them or
+not. No matter how much experience you have, you'll never predict all future
+changes. The changes always depend on the client, not the developer.
+
+## Forward Engineering a Model
+
+So we have the physical model. However, this is just a model, not a real
+database.
+
+When in an `EER Diagram` tab in MySQLWorkbench, we use the
+`Database -> Forward Engineer` feature in MySQLWorkbench, and leave everything
+default. This creates a database `school` based on the physical model. The SQL
+script generated can be inspected here:
+[`school/create_database.sql`](../school/create_database.sql)
+
+## Synchronizing a Model with a Database
+
+When making changes to the structure of a database, we must be able to replicate
+it on other instances of the databases. Just think of a database in production:
+We need to be able to check the the change in structure works during testing
+before deploying to production.
+
+For demonstration purposes, we add a column `coupon` to the `enrollments` table,
+describing the coupon code a student may use upon enrollment. We make the
+following change to our database:
+
+![Synchronizing a model with a database 1](./img/sync-model-with-db-1.png)
+
+In MySQLWorkbench, click `Database -> Synchronize Model...`. Side note: We use
+`Forward Engineering` when we don't have a database. We use `Synchronize Model`
+when we made changes to the model, and want to apply that to an existing
+database.
+
+![Synchronizing a model with a database 2](./img/sync-model-with-db-2.png)
+
+MySQL may need to temporarily drop the relationship between tables that may be
+affected by the change in data modelling.
+
+We get the following SQL script when we add the column `coupon`:
+
+```sql
+...
+
+ALTER TABLE `school`.`enrollments`
+ADD COLUMN `coupon` VARCHAR(50) NULL DEFAULT NULL AFTER `price`;
+
+...
+```
+
+## Reverse Engineering a Database
+
+What if we have a database, but not a physical model of it?
+
+In MySQLWorkbench, remember to close an already open model. If not,
+MySQLWorkbench will add the database we're reverse engineering to that existing
+model.
+
+We select the database to reverse engineer, and click
+`Database -> Reverse Engineer`. We check all databases that we want to create a
+model of. This demo uses only the `sql_store` database. We get the following
+physical model, based on the existing database `sql_store`:
+
+![Reverse Engineer](./img/reverse-engineer.png)
+
+Note how this diagram shows that we lack a relationship between `orders` and
+`order_item_notes`. We need this in order to maintain data integrity. If not, we
+can insert any `order_id` in the `order_item_notes` table.
