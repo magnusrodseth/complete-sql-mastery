@@ -46,3 +46,43 @@ We need to be able to track the:
 - Top movies
 - Top customers
 - Revenue per day, month and year
+
+## Conceptual Model
+
+This time, I tried to really abstract things away. I am fully aware that some of
+these relationships should be refactored to separate entities, but I really just
+tried to mimic the requirements in a visual way.
+
+This is my result:
+
+![Conceptual model](./img/conceptual-model.png)
+
+### Conceptual Model: Solution
+
+![Conceptual model solution](./img/conceptual-model-revisited.png)
+
+We can see here that I went a bit overboard with the abstraction. This time,
+Mosh introduced the link table `Rental` to describe the relationship between
+`Customer`, `Rental` and `Movie`. We went quite in-depth on the `Employee` and
+`Permission` too, assuming some attributes (e.g. `username`, `password`) about
+the entity.
+
+## Logical model
+
+This was almost simply adding types to attributes. Note the logical many-to-many
+relationship between an `Employee` and a `Permission` in the conceptual model
+above. This is strictly speaking a too fine-grained implementation. Nowhere in
+the requirements is it stated that we need that amount of control over the
+permissions of our employees. We can simply assign a `Role` to an `Employee`.
+This way, every time we get a new cashier, this cashier gets the same
+permissions as an existing cashier.
+
+Additionally, note the "1 Optional to Many Mandatory" relationship between
+`Coupon` and `Rental`. When creating the physical model, this means that
+`Rental` will have a column `coupon_id` (or something like that), that can be
+null. In other words, it is not required for a `Rental` to have an associated
+`Coupon`.
+
+We get the following logical model:
+
+![Logical model](./img/logical-model.png)
