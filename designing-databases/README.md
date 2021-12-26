@@ -260,3 +260,113 @@ We will soon see how the relationship between `courses` and `tags` ends up being
 implemented.
 
 #### Link Tables
+
+We now need to add the many-to-many relationship between `courses` and `tags`.
+However, relational databases do not have many-to-many relationships, strictly
+speaking. If they do, they hide some implementation details in order to help
+developer workflow.
+
+We need to add a **link table** to achieve a many-to-many relationship between
+the two tables. In practice, we end up with the same relationship as `students`,
+`enrollments` and `courses` follow; we get 2 one-to-many relationships, both
+`students` and `courses` being the parent table.
+
+We create a new table in order to achieve the many-to-many relationship between
+`courses` and `tags`, and we call this table `course_tags`. We also remove the
+`tags` attribute in the `courses` table. We get the following one-to-many
+relationships:
+
+![Link tables](./img/link-tables.png)
+
+### Second Normal Form (2NF)
+
+To qualify for second normal form, a relation must:
+
+1. Be in the first normal form (1NF)
+
+2. Not have any non-prime attribute that is dependent on any proper subset of
+   any candidate key of the relation. A non-prime attribute of a relation is an
+   attribute that is not a part of any candidate key of the relation.
+
+That's some heavy stuff. Let's make it very simple:
+
+**We assume the relation is in the first normal form. Additionally, every table
+should describe exactly one entity, and every column in that table should
+describe that entity**.
+
+Let's look at an example. Our `courses` table has the following attributes:
+`title`, `price`, `instructor`. It stores course records. We do not have a
+column for `enrollment_date`, as this column does not describe the entity
+`course`. Rather, `enrollment_date` describes the entity `enrollment`.
+
+Let's look at another example. We have the following table `orders`:
+
+![2NF example 1](./img/2nf-example-1.png)
+
+This relationship is not in the second normal form. The purpose of the entity
+`orders` is to store orders, not a customer's name! The `customer_name` should
+be refactored into its own table: `customers`. We get the following:
+
+![2NF example 2](./img/2nf-example-2.png)
+
+This is very inline with the concept that **primary keys should not be
+updated**.
+
+In our original example, the `courses` table violates the second normal form. An
+`instructor` should not really be a `VARCHAR` and belong to `courses` - one
+instructor may have several courses, and this would cause duplication in our
+database!
+
+We add a new table `instructors`, and declare that a one-to-many relationship
+between `instructors` and `courses`. We get the following physical model:
+
+![2NF Final](./img/2nf-final.png)
+
+### Third Normal Form (3NF)
+
+To qualify for third normal form, a relation must:
+
+1. Be in the second normal form (2NF). This implies in turn the that relation is
+   in the first normal form (1NF).
+
+2. All the attributes in a table are determined only by the candidate keys of
+   that relation, and not by the non-prim attributes.
+
+Again, that's quite heavy. Let's explain it using a simple example:
+
+We assume the relation is in the second normal form and, as an implication, in
+the first normal form. We have a table `invoices` with the following columns:
+
+![3NF example](./img/3nf-example.png)
+
+We can calculate the `balance` column by subtracting `invoice_total` and
+`payment_total`; **`balance = invoice_total - payment_total`**.
+
+We say that `balance` is dependent on, or **derives from**, the `invoice_total`
+and `payment_total` columns, which means that if the value of `invoice_total` or
+`payment_total` changes, the value of `balance` must be recalculated. Thus, we
+should not have a column `balance` in the `invoices` table.
+
+In summary: **A column in a table should not be derived from other columns in
+that table**. This helps us reduce duplication and maintain data integrity.
+
+The same goes for a table having the columns `first_name`, `last_name` and
+`full_name`. We can always derive `full_name` from `first_name` and `last_name`.
+Thus, we should not have a column `full_name` in our table.
+
+### A pragmatic advice on normalization
+
+Don't worry about memorizing the normalization forms unless you're preparing for
+an exam.
+
+Simply focus on reducing redundancy.
+
+Don't jump into creating tables. You almost always end up with a messy design if
+you don't think the conceptual model, then the logical model, and then the
+physical model through.
+
+Always think about the requirements. If we have `customers` with multiple
+shipping addresses, we should separate this into its own table `address`. If
+this is not a requirement, there may be no need to separate this data.
+
+## Don't model the universe!
