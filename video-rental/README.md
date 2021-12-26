@@ -86,3 +86,12 @@ null. In other words, it is not required for a `Rental` to have an associated
 We get the following logical model:
 
 ![Logical model](./img/logical-model.png)
+
+## Physical model
+
+We get the following physical model:
+
+![Physical model](./img/physical-model.png)
+
+Note that `rental` has a foreign key `coupon_id` which can be null! This is
+because of the "1 Optional to Many Mandatory" relationship in our logical model.
