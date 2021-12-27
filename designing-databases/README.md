@@ -452,3 +452,240 @@ physical model, based on the existing database `sql_store`:
 Note how this diagram shows that we lack a relationship between `orders` and
 `order_item_notes`. We need this in order to maintain data integrity. If not, we
 can insert any `order_id` in the `order_item_notes` table.
+
+## Project: Flight Booking System
+
+[Click here](../flight-booking-system/) to read more about the Flight Booking
+System.
+
+## Project: Video Rental Application
+
+[Click here](../video-rental/) to read more about the Video Rental Application.
+
+## Creating and Dropping Databases
+
+### Creating Databases
+
+```sql
+CREATE DATABASE IF NOT EXISTS sql_store2;
+```
+
+Adding `IF NOT EXISTS` prevents us from getting an error if the database
+`sql_store2` already exists.
+
+### Dropping Databases
+
+```sql
+DROP DATABASE IF EXISTS sql_store2;
+```
+
+Adding `IF EXISTS` prevents us from getting an error if the database
+`sql_store2` does not exist when we try to drop it.
+
+## Creating Tables
+
+This demo shows the relevant keyword you might need when creating a table. The
+created table `customers` in `sql_store2` is a simplified replica of `customers`
+in `sql_store`.
+
+```sql
+USE sql_store2;
+
+CREATE TABLE IF NOT EXISTS customers
+(
+    -- customer_id - primary key with auto-increment
+    customer_id INT PRIMARY KEY AUTO_INCREMENT,
+    -- first_name - not null
+    first_name  VARCHAR(50)  NOT NULL,
+    -- points - has a default value
+    points      INT          NOT NULL DEFAULT 0,
+    -- email - must be unique
+    email       VARCHAR(255) NOT NULL UNIQUE
+)
+```
+
+Note how we add `IF NOT EXISTS` when creating the table.
+
+## Altering Tables
+
+```sql
+ALTER TABLE customers
+    ADD last_name VARCHAR(50) NOT NULL AFTER first_name
+```
+
+Note how we can specify which column the added column should come after.
+
+```sql
+ALTER TABLE customers
+    ADD last_name VARCHAR(50) NOT NULL AFTER first_name,
+    ADD cit       VARCHAR(50) NOT NULL,
+    MODIFY COLUMN first_name VARCHAR(55) DEFAULT '',
+    DROP points
+```
+
+We can modify existing columns. We can also drop columns.
+
+## Creating Relationships
+
+```sql
+DROP TABLE IF EXISTS customers;
+CREATE TABLE IF NOT EXISTS customers
+(
+    -- Details here...
+);
+
+CREATE TABLE IF NOT EXISTS orders
+(
+    order_id    INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT NOT NULL,
+
+    FOREIGN KEY fk_orders_customers (customer_id)
+        REFERENCES customers (customer_id)
+        ON UPDATE CASCADE
+        ON DELETE NO ACTION
+);
+```
+
+After all columns are defined, we define the relationship. The convention for
+naming foreign keys are as follows:
+`fk_{child_table}_{parent_table} ({foreign_key_column})`.
+
+We also define how the relation should act `ON UPDATE` and `ON DELETE`.
+
+**Important to note:** If we re-execute the script above, we get an error. This
+is because we try to delete the `customers` table now, but that won't work
+because `customers` is related to `orders`. We need to delete the `orders` table
+first in order to delete the `customers` table.
+
+We move the `DROP TABLE` statements the following way:
+
+```sql
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS customers;
+
+CREATE TABLE IF NOT EXISTS customers
+(
+    -- Details here...
+);
+
+CREATE TABLE IF NOT EXISTS orders
+(
+    order_id    INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT NOT NULL,
+
+    FOREIGN KEY fk_orders_customers (customer_id)
+        REFERENCES customers (customer_id)
+        ON UPDATE CASCADE
+        ON DELETE NO ACTION
+);
+```
+
+Our database is re-generated from scratch, because we handled the relationships
+between tables correctly!
+
+## Altering Primary Key Constraints and Foreign Key Constraints
+
+Let's say we forgot to add the foreign key constraint to the `orders` table
+above; we forgot to add the relationship between `orders` and `customers`.
+
+```sql
+ALTER TABLE orders
+    DROP PRIMARY KEY,
+    ADD PRIMARY KEY (order_id),
+
+    DROP FOREIGN KEY fk_orders_customers,
+    ADD FOREIGN KEY fk_orders_customers (customer_id)
+        REFERENCES customers (customer_id)
+        ON UPDATE CASCADE
+        ON DELETE NO ACTION;
+```
+
+Note that we can drop an existing primary key. We can also add a new primary
+key. If we want a composite primary key, we add more columns in the parenthesis
+(e.g. `ADD PRIMARY KEY (order_id, some_other_id, a_third_id)`).
+
+We can also drop foreign keys. Adding a foreign key has the exact same syntax as
+if we define it when we create a table.
+
+## Character Sets and Collations
+
+A character set is a table that maps each character to its numeric value. There
+exists several character sets, where some character sets only supports certain
+characters.
+
+```sql
+SHOW CHARACTER SET
+```
+
+This query shows all character sets currently supported in MySQL. Using the
+character set `utf-8`, we can store characters in basically every language.
+
+**The character set `utf-8` is the default character set used by MySQL version 5
+and higher.**
+
+A collation is a set of rules that determines how the characters in a given
+language are sorted. The default collation for `utf-8` is `utf8_general_ci`. The
+"ci" stands for "case insensitive". This means the MySQL treats lower case and
+upper case the same when sorting.
+
+The column `Maxlen` determines the number of bytes that the character set uses
+to store each character.
+
+We have the following queries for adding and updating a character set in MySQL:
+
+```sql
+-- Set character set when creating database
+CREATE DATABASE db_name
+    CHARACTER SET latin1;
+
+-- Alter character set in existing database
+ALTER DATABASE db_name
+    CHARACTER SET latin1;
+
+-- Set character set when creating table
+CREATE TABLE table_name
+(
+    -- Details go here
+)
+    CHARACTER SET latin1;
+
+-- Alter character set in existing table
+ALTER TABLE table_name
+    CHARACTER SET latin1;
+
+-- Set character set for a column
+CREATE TABLE table_name
+(
+    first_name VARCHAR(50) CHARACTER SET latin1 NOT NULL
+);
+
+-- Alter character set for an existing column
+ALTER TABLE table_name
+    MODIFY first_name VARCHAR(50) CHARACTER SET latin1 NOT NULL
+```
+
+## Storage Engines
+
+MySQL has several storage engines. These storage engines determine how data is
+stored and what features are available.
+
+```sql
+-- Displays all available engines
+SHOW ENGINES
+```
+
+The two most commonly used storage engines are `MyISAM` and `InnoDB`.
+
+MyISAM is an older storage engine.
+
+Going forward, InnoDB is the superior storage engine. InnoDB supports features
+such as "Transaction", "XA" and "Savepoints". **InnoDB is the default storage
+engine used in MySQL**.
+
+If we have an old database that we want to upgrade to InnoDB, we use the
+following query:
+
+```sql
+ALTER TABLE customers
+    ENGINE = InnoDB;
+```
