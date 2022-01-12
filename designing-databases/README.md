@@ -7,7 +7,7 @@ a well-structured database. Remember that a well-structured database takes
 planning before one can start coding up the database. A poorly designed database
 causes problems down the line.
 
-**Planning before coding is essential for a well-structured**.
+**Planning before coding is essential for a well-structured database design**.
 
 ## Data modelling
 
