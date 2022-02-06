@@ -1413,7 +1413,8 @@ SELECT SUM(invoice_total) AS total_sales
 FROM invoices
 ```
 
-What if we want to create a summary **per client**? We need to group the data!
+What if we want to create a summary **per client**, i.e. partitioning our rows?
+We need to group the data!
 
 ```sql
 `SELECT client_id, SUM(invoice_total) AS total_sales
@@ -2191,3 +2192,182 @@ SELECT CONCAT(first_name, ' ', last_name) AS customer,
 FROM customers c
 ORDER BY points DESC
 ```
+
+## Views
+
+### Creating Views
+
+Queries with sub-queries can quickly become quite complex and consequently
+difficult to read.
+
+We can save a given sub-query in a view, and then reuse it later!
+
+```sql
+SELECT
+    c.client_id,
+    c.name,
+    SUM(invoice_total) AS total_sales
+FROM clients c
+         JOIN invoices i ON c.client_id = i.client_id
+GROUP BY c.client_id, name
+```
+
+In the future, we might have other queries that are based on this sub-query.
+Hence, we make a view out of it:
+
+```sql
+CREATE VIEW sales_by_client AS
+(
+SELECT c.client_id,
+       c.name,
+       SUM(invoice_total) AS total_sales
+FROM clients c
+         JOIN invoices i ON c.client_id = i.client_id
+GROUP BY c.client_id, name
+    )
+```
+
+This create a view object, not a result table. We can select data from this
+view, but we can also use this view just like a table.
+
+```sql
+SELECT * FROM sales_by_client;
+```
+
+We can also join this result with a new table.
+
+Views are very powerful, and can greatly improve readability when performing
+sub-queries.
+
+**Remember:** Views do not store data. Rather, they provide a _view_ of the
+underlying data in the tables.
+
+#### An exercise on views
+
+Create a view to see the balance for each client. The balance is calculated by
+taking `invoice_total - payment_total`.
+
+```sql
+CREATE VIEW clients_balance AS
+(
+SELECT c.client_id,
+       name,
+       (invoice_total - payment_total) AS balance
+FROM clients c
+         JOIN invoices i ON c.client_id = i.client_id
+    )
+```
+
+### Altering and Dropping Views
+
+One way to alter a view is to drop it, and create an updated one.
+
+```sql
+DROP VIEW clients_balance;
+```
+
+The other way is to use the `CREATE OR REPLACE` keyword.
+
+```sql
+CREATE OR REPLACE VIEW clients_balance AS
+(
+SELECT c.client_id,
+       name,
+       (invoice_total - payment_total) AS balance
+FROM clients c
+         JOIN invoices i ON c.client_id = i.client_id
+    )
+```
+
+It is recommended to back up views in a source control system like Git.
+
+### Updatable Views
+
+We can also use views in `INSERT`, `UPDATE` and `DELETE` statements, **but only
+under certain circumstances**.
+
+If the view **does not have** any of the following, we refer to that view as an
+**updatable view**:
+
+- The `DISTINCT` keyword
+- Any aggregate function (e.g. `MIN`, `MAX`, `SUM`, etc...)
+- Any `GROUP BY` or `HAVING` keywords
+- The `UNION` keyword
+
+This means that we can use that statement in inserts, updates and deletes.
+
+The example below fulfills all criteria mentioned above:
+
+```sql
+CREATE OR REPLACE VIEW invoices_with_balances AS
+(
+SELECT invoice_id,
+       number,
+       client_id,
+       invoice_total,
+       payment_total,
+       (invoice_total - payment_total) AS balance,
+       invoice_date,
+       due_date,
+       payment_date
+FROM invoices
+WHERE (invoice_total - payment_total) > 0
+    )
+```
+
+We can use this to add, update or delete data.
+
+```sql
+DELETE
+FROM invoices_with_balances
+WHERE invoice_id = 1;
+
+UPDATE invoices_with_balances
+SET due_date = DATE_ADD(due_date, INTERVAL 2 DAY)
+WHERE invoice_id = 2;
+```
+
+### The `WITH OPTION CHECK` Clause
+
+When you update or delete data through a view, an affected row might disappear.
+There are times where you want to prevent this.
+
+```sql
+CREATE OR REPLACE VIEW invoices_with_balances AS
+(
+SELECT invoice_id,
+       number,
+       client_id,
+       invoice_total,
+       payment_total,
+       (invoice_total - payment_total) AS balance,
+       invoice_date,
+       due_date,
+       payment_date
+FROM invoices
+WHERE (invoice_total - payment_total) > 0
+    )
+WITH CHECK OPTION;
+```
+
+**Note the `WITH CHECK OPTION` at the end of the query**. When we apply this
+clause, this view will prevent update or delete statements from excluding rows
+from the view.
+
+Using `WITH CHECK OPTION`: If we try to modify a row that would cause it to no
+longer be part of a given view, you will get an error.
+
+### Other Benefits of Views
+
+We have seen that **views can simplify queries**.
+
+Views can also **reduce the impact of changes**. Imagine you have 10 queries
+written for a table. Then you want to change the name of that table, or the
+structure of it. You would have to fix all 10 queries for that modified table.
+What if you were not allowed to write any queries against this table, making it
+"impossible" to update the table? Instead, we can use a view to act as an
+**interface** between you and the table.
+
+We can also use views to **restrict access to the data** of the underlying
+table. For instance, we can use a `WHERE` clause to only expose the rows of a
+table that fulfill a given criteria.
