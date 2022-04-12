@@ -142,3 +142,128 @@ We also have secondary indexes that are placed on the **foreign key columns**.
 MySQL automatically adds indexes to the foreign key columns.
 
 ## Prefix indexes
+
+If the column we want to index is a string column, e.g. `CHAR`, `VARCHAR`,
+`TEXT` or `BLOB`, our index may consume a lot of space and won't perform well.
+
+Hence, smaller indexes are better, because they fit in memory. This makes our
+searches faster.
+
+Thus, when indexing string columns, we only want to include a prefix to the
+column in order to save space.
+
+```sql
+-- Create a prefix index on the first 20 characters of the last_name column
+CREATE INDEX idx_last_name ON customers (last_name(20));
+```
+
+Choosing the length of the prefix must be seen in context of what we're
+indexing. Using 1 character here is no good; many people have different last
+names starting with the same character.
+
+### Choosing a good prefix index
+
+We know the amount of rows we have (1010) by executing
+`SELECT COUNT(*) FROM customers`.
+
+We want to find a prefix of unique entries that **approaches** this number, with
+the minimum amount of characters in the prefix. Observe the following query:
+
+```sql
+SELECT COUNT(DISTINCT LEFT(last_name, 1)), -- Returns 25
+       COUNT(DISTINCT LEFT(last_name, 5)), -- Returns 966
+       COUNT(DISTINCT LEFT(last_name, 10)) -- Returns 996
+FROM customers
+```
+
+We only see a small improvement from prefix length 5 to prefix length 10.
+**Thus, we should use 5 as a prefix here**.
+
+```sql
+DROP INDEX idx_last_name ON customers;
+CREATE INDEX idx_last_name ON customers (last_name(5));
+SHOW INDEXES IN customers;
+```
+
+The `idx_last_name` has a `Sub_part` of 5, which is equivalent to the prefix.
+
+## Full-test indexes
+
+Let's say we want to create a blog. The user searches for `"react redux"` to
+find posts matching this content. We want to match content appearing in the
+title or the body, not necessarily right next to each other.
+
+```sql
+CREATE FULLTEXT INDEX idx_title_body ON posts (title, body);
+```
+
+We create a full-text index on the two relevant columns.
+
+Now, we use the built-in `MATCH` keyword to match a phrase against the specified
+columns.
+
+```sql
+SELECT *
+FROM posts
+WHERE MATCH(title, body) AGAINST('react redux');
+```
+
+This returns the following:
+
+![React Redux query](./img/react-redux.png)
+
+Based on several factors, MySQL calculates a relevancy scores for the results,
+which is a floating point number between 0 and 1.
+
+We update the query:
+
+```sql
+SELECT *,
+       MATCH(title, body) AGAINST('react redux') as relevancy
+FROM posts
+WHERE MATCH(title, body) AGAINST('react redux')
+ORDER BY relevancy DESC;
+```
+
+This gives the following result:
+
+![Relevancy](./img/relevancy.png)
+
+We can also use `MATCH` in boolean mode to get more fine-grained search.
+
+```sql
+SELECT *,
+       MATCH(title, body) AGAINST('react redux') as relevancy
+FROM posts
+WHERE MATCH(title, body) AGAINST('react -redux' IN BOOLEAN MODE)
+ORDER BY relevancy DESC;
+```
+
+This searches for posts with `react` and not `redux`.
+
+We can also add words as requirements:
+
+```sql
+SELECT *,
+       MATCH(title, body) AGAINST('react redux') as relevancy
+FROM posts
+WHERE MATCH(title, body) AGAINST('react -redux +form' IN BOOLEAN MODE)
+ORDER BY relevancy DESC;
+```
+
+This requires the title or body to include `form`.
+
+## Composite indexes
+
+We can combine indexes for certain queries.
+
+```sql
+CREATE INDEX idx_state_points ON customers (state, points);
+
+EXPLAIN SELECT customer_id FROM customers WHERE state='CA' AND points >1000;
+```
+
+We can see that MySQL realized that the new composite index does a better job
+than any of the previous indexes, e.g. `idx_points` or `idx_state`.
+
+![Composite index](./img/composite-indexes.png)
