@@ -267,3 +267,84 @@ We can see that MySQL realized that the new composite index does a better job
 than any of the previous indexes, e.g. `idx_points` or `idx_state`.
 
 ![Composite index](./img/composite-indexes.png)
+
+## Order of columns in composite indexes
+
+There are some rules to choosing the order of columns in composite indexes:
+
+1. **Put the most frequently used columns first**.
+2. **Put the columns with a higher cardinality first**.
+
+Note that **you should always take your data and your query into account; don't
+follow the 2 rules above blindly**.
+
+## Index maintenance
+
+Watch for **duplicate indexes** and **redundant indexes**.
+
+Duplicate indexes are indexes on the same set of columns in the same order, e.g.
+`(A,B,C)` and `(A,B,C)`. Sometimes, you may create a duplicate index without
+knowing it. This oftentimes happens when you create an index without looking at
+the existing indexes.
+
+Redundant indexes are a bit different. Let's say you have an index on columns
+`(A,B)`, and then create a new index on column `(A)`, this is **redundant**.
+However, if you create an index on columns `(B,A)` or just column `(B)`, this is
+not redundant. This also oftentimes happens when you create an index without
+looking at the existing indexes.
+
+**Always check existing indexes before creating a new index**.
+
+## ✅ Performance Best Practices
+
+- **Smaller tables perform better**. Don't store the data you don't need. Solve
+  today's problems, not tomorrow's future problems that may never happen.
+
+- **Use the smallest data types possible**. If you need to store an age, a
+  `TINYINT` is sufficient. No need to use `INT`. Saving a few bytes is not a big
+  deal in a small table, but has significant impact in a table with millions of
+  records.
+
+- **Every table must have a primary key**.
+
+- **Primary keys should be short**. Prefer `TINYINT` over `INT` if you only need
+  to store 100 records.
+
+- **Prefer numeric types to strings for primary keys**. This makes looking up
+  records by the primary key faster.
+
+- **Avoid BLOBs**. They increase in size of your database and have a negative
+  impact on performance. Store your files on disk if you can.
+
+- **If a table has too many columns, consider splitting it into two related
+  tables using a one-to-one relationship**. This is called **vertical
+  partitioning**. For instance, you may have a `customers` table with columns
+  for storing their `address`. If these columns don't get read frequently, split
+  the table into two tables (`customers` and `customers_metadata` or something
+  like that).
+
+- **In contrast, if you have several `JOIN` statements in your queries due to
+  data fragmentation, consider denormalizing the data**. Denormalizing is the
+  opposite of normalization. It involves duplicating a column from one table in
+  another table, in order to reduce the number of joins required.
+
+- **Consider creating summary / cache tables for expensive queries**. For
+  instance, if the query is to fetch the list of forums, and the number of posts
+  in each forum is expensive, create a table called `forums_summary` that
+  contains the list of forums and the number of posts in them. You can use
+  events to regularly refresh the data in this table. You may also use triggers
+  to update the counts every time there is a new post.
+
+- **Full table scans are a major cause of slow queries**. Use `EXPLAIN` and look
+  for queries with `type=ALL`. These are full table scans. Use indexes to
+  optimize these queries.
+
+- **When designing indexes**:
+  1. **Look at the columns in your `WHERE` clauses first**. Those are the first
+     candidates for indexes because they help narrow down the searches.
+  2. **Next, look at the columns using in the `ORDER BY` clause**. If they exist
+     in the index, MySQL can scan your index to return ordered data without
+     having to perform a sort operation (filesort).
+  3. **Finally, consider adding the columns in the `SELECT` clause to your
+     indexes**. This gives you a **covering** index that covers everything your
+     query needs. MySQL doesn't need to retrieve anything from your tables.
