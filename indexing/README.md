@@ -340,6 +340,7 @@ looking at the existing indexes.
   optimize these queries.
 
 - **When designing indexes**:
+
   1. **Look at the columns in your `WHERE` clauses first**. Those are the first
      candidates for indexes because they help narrow down the searches.
   2. **Next, look at the columns using in the `ORDER BY` clause**. If they exist
@@ -348,3 +349,21 @@ looking at the existing indexes.
   3. **Finally, consider adding the columns in the `SELECT` clause to your
      indexes**. This gives you a **covering** index that covers everything your
      query needs. MySQL doesn't need to retrieve anything from your tables.
+
+- **Prefer composite indexes to several single-column indexes**.
+
+- **The order of columns in indexes matter**. Put the most frequently used columns and the columns with higher cardinality first, but always take your queries and your data into account.
+
+- **Remove duplicate, redundant and unused indexes**. Duplicate indexes are the indexes on the same set of columns with the same order. Redundant indexes are unnecessary indexes that can be replaced with existing indexes. For instance, if you have an index on columns `(A,B)` and create another index on column `(A)`, the latter is redundant because the former index can help.
+
+- **Don't create an index before analyzing the existing indexes**.
+
+- **Isolate your columns in your queries, so that MySQL can use your queries**.
+
+- **Avoid `SELECT *`**. Most of the time, selecting all columns ignores your indexes and returns unnecessary columns you may not need. This puts an extra load on your database server.
+
+- **Return only the rows you need**. Use the `LIMIT` clause to limit the number of rows returned.
+
+- **Avoid `LIKE` expressions with a leading wildcard**. For instance, `LIKE '%name'`.
+
+- **If you have a slow query that uses the `OR` operator, consider chopping up the query into 2 queries that utilize separate indexes and combine them using the `UNION` operator**.
